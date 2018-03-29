@@ -1,12 +1,15 @@
 import numpy as np
 import sys
+import argparse
 
-split_no=int(sys.argv[1])
-use_bg_cls=sys.argv[2]
+parser = argparse.ArgumentParser()
+parser.add_argument("--use_bg_cls", dest="use_bg_cls", action="store_true")
+parser.add_argument("--split_no", action="store", dest="split_no", type=int, default = 0)
+args = parser.parse_args()
 
-parallel=False
+print "split_no",args.split_no,args.use_bg_cls
 
-no_of_epochs=3
+parallel=True
 
 if parallel:
     from imagenet_data_prep import parallelized_imagenet_data_prep    
@@ -14,17 +17,16 @@ if parallel:
                                             db_type='train',
                                             batch_size=128,
                                             include_known_unknowns = True,
-                                            use_bg_cls=use_bg_cls,
-                                            split_no=split_no,
-                                            no_of_epochs=no_of_epochs
+                                            use_bg_cls=args.use_bg_cls,
+                                            split_no=args.split_no,
                                             )
 
     validation_generator = parallelized_imagenet_data_prep(
                                             db_type='val',
                                             batch_size=128,
                                             training_data_obj=training_generator,
-                                            use_bg_cls=use_bg_cls,
-                                            split_no=split_no
+                                            use_bg_cls=args.use_bg_cls,
+                                            split_no=args.split_no
                                             )
 
     fit_generator_params = dict(
@@ -39,21 +41,18 @@ else:
                                             db_type='train',
                                             batch_size=128,
                                             include_known_unknowns = True,
-                                            use_bg_cls=use_bg_cls,
-                                            split_no=split_no
+                                            use_bg_cls=args.use_bg_cls,
+                                            split_no=args.split_no
                                             )
 
     validation_generator = imagenet_data_prep(
                                             db_type='val',
                                             batch_size=128,
                                             training_data_obj=training_generator,
-                                            use_bg_cls=use_bg_cls,
-                                            split_no=split_no
+                                            use_bg_cls=args.use_bg_cls,
+                                            split_no=args.split_no
                                             )
     fit_generator_params = dict(workers=1)
-    """
-    **self.feature_params
-    """
     
 
 from keras.applications.inception_v3 import InceptionV3
@@ -81,24 +80,29 @@ with tf.device('/cpu:0'):
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
     # let's add a fully-connected layer
-    x = Dense(1024, activation='relu')(x)
-    if use_bg_cls:
-        predictions = Dense(101, activation='softmax')(x)
+    x = Dense(1024,name='fc')(x)
+    
+    if args.use_bg_cls:
+        pred = Dense(101, activation='softmax',name='pred')(x)
     else:
-        predictions = Dense(100, activation='softmax')(x)
+        pred = Dense(100, activation='softmax',name='pred')(x)
 
-    model = Model(inputs=base_model.input, outputs=predictions)
+    model = Model(inputs=base_model.input, outputs=pred)
 
 parallel_model = multi_gpu_model(model, gpus=[0,1])
 
-# first: train only the top layers (which were randomly initialized)
-# i.e. freeze all convolutional InceptionV3 layers
-for layer in base_model.layers:
+
+for layer in model.layers[:249]:
     layer.trainable = False
+for layer in model.layers[249:]:
+    layer.trainable = True
+
+#for layer in base_model.layers:
+#    layer.trainable = False
 
 # compile the model (should be done *after* setting layers to non-trainable)
 #adam = Adam(lr=0.01)
-parallel_model.compile(optimizer='rmsprop', loss='categorical_crossentropy',metrics=['acc'])
+parallel_model.compile(optimizer='rmsprop', loss={'pred':'categorical_crossentropy'},metrics=['acc'])
 
 
 # train the model on the new data for a few epochs
@@ -108,23 +112,15 @@ parallel_model.fit_generator(
                             validation_data=validation_generator,
                             use_multiprocessing=False,
                             max_queue_size=50,
-                            epochs=no_of_epochs,
+                            epochs=10,
+                            verbose=2,
                             **fit_generator_params
                             )
 
-if use_bg_cls:
-    model.save('BG_Cls_Data/Finetuned_Model_Split_'+str(split_no))
+
+if args.use_bg_cls:
+    model.save('BG_Cls_Data/Finetuned_Model_Split_'+str(args.split_no))
 else:
-    model.save('Cross_Entr_Data/Finetuned_Model_Split_'+str(split_no))
-
-
-
-"""
-i=0
-while i<10:
-    i+=1
-    print training_generator
-    d = next(training_generator)
-    print "D",d,list(d)
-#    print (X,y,sample_weights)
-"""
+    model.save('Cross_Entr_Data/Finetuned_Model_Split_'+str(args.split_no))
+    
+    
