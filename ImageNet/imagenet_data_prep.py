@@ -49,6 +49,7 @@ class imagenet_data_prep(keras.utils.Sequence):
             self.unknown_classes = not_known_labels[int(0.5*len(not_known_labels)):]
             training_data_obj=self
             self.shuffle = True
+            #self.known_classes = self.known_classes[:3]
 
         self.n_classes = len(training_data_obj.known_classes)
         # Adding Known Unknowns
@@ -101,6 +102,7 @@ class imagenet_data_prep(keras.utils.Sequence):
     def on_epoch_end(self):
         'Updates indexes after each epoch'
         self.indexes = np.arange(len(self.list_IDs))
+        print len(self.list_IDs),"..................................... REINITIATING ..............................."
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
 
@@ -138,7 +140,7 @@ class imagenet_data_prep(keras.utils.Sequence):
             Y[y!=-1] = keras.utils.to_categorical(y[y!=-1], num_classes=self.n_classes)
             Y[y==-1] = np.ones_like(self.n_classes)*(1./self.n_classes)
                                     
-        print X.shape,Y.shape,sample_weights.shape,X.dtype,Y.dtype,sample_weights.dtype
+#        print X.shape,Y.shape,sample_weights.shape,X.dtype,Y.dtype,sample_weights.dtype
         return X, Y, sample_weights
     
     
@@ -266,7 +268,7 @@ class parallelized_imagenet_data_prep():
         data=[]
         for ID in self.list_IDs[:int(self.get_no_of_batches()*self.batch_size)]:
             data.append((self.dataset_path+ID,self.labels[ID],self.sample_weights[ID]))
-        p=Pool(multiprocessing.cpu_count()*5)
+        p=Pool(multiprocessing.cpu_count()*15)
         temp=p.map(partial(process_each_sample,self.db_type,self.n_classes),data)
 
         if self.db_type == 'train':
