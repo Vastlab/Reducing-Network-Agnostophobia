@@ -39,7 +39,7 @@ class imagenet_data_prep(keras.utils.Sequence):
         labels=[]
         sample_weights=[]
 
-        if db_type=='train':
+        if db_type=='train' or (db_type=='val' and training_data_obj is None):
             raw_labels=data_frame_group.groups.keys()
             random.shuffle(raw_labels)
             self.known_classes = raw_labels[split_no:split_no+(len(raw_labels)/10)]
@@ -79,7 +79,7 @@ class imagenet_data_prep(keras.utils.Sequence):
         
     def __len__(self):
         'Denotes the number of batches per epoch'
-        return int(np.floor(len(self.list_IDs) / self.batch_size))
+        return int(np.ceil(float(len(self.list_IDs)) / self.batch_size))
 
     
     
@@ -129,6 +129,7 @@ class imagenet_data_prep(keras.utils.Sequence):
             sample_weights.append(self.sample_weights[ID])
 
         X = np.array(X)
+        X = X/256.
         y = np.array(y)
         sample_weights = np.array(sample_weights)
 
@@ -141,6 +142,7 @@ class imagenet_data_prep(keras.utils.Sequence):
             Y[y==-1] = np.ones_like(self.n_classes)*(1./self.n_classes)
                                     
 #        print X.shape,Y.shape,sample_weights.shape,X.dtype,Y.dtype,sample_weights.dtype
+#        return X, Y[:,np.newaxis,np.newaxis,:], sample_weights
         return X, Y, sample_weights
     
     
