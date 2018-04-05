@@ -9,10 +9,9 @@ parser.add_argument("--split_no", action="store", dest="split_no", type=int, def
 parser.add_argument("--model", action="store", dest="use_model", default = None)
 parser.add_argument('--gpus', nargs='+', help='GPU No or Numbers for Multiple GPUs', required=True, type=int)
 parser.add_argument("--use_ring_loss", dest="use_ring_loss", action="store_true", default=False)
+parser.add_argument('--cross_entropy_loss_weight', help='cross_entropy_loss_weight', type=float, default=1.)
+parser.add_argument('--ring_loss_weight', help='ring_loss_weight', type=float, default=1.)
 args = parser.parse_args()
-
-print "split_no",args.split_no,args.use_bg_cls,"args.gpus",args.gpus,len(args.gpus)
-
 
 parallel=False
 Batch_Size = 128
@@ -21,9 +20,9 @@ if len(args.gpus)>1:
     Batch_Size=Batch_Size*len(args.gpus)
     
 data_generator_params = dict(
-                                                            batch_size=Batch_Size,
-                                                            use_bg_cls=args.use_bg_cls,
-                                                            split_no=args.split_no
+                                batch_size=Batch_Size,
+                                use_bg_cls=args.use_bg_cls,
+                                split_no=args.split_no
                             )
 
 if args.use_ring_loss:
@@ -69,8 +68,8 @@ else:
                                                 **data_generator_params
                                             )
     fit_generator_params = dict(
-                                workers=1,
-                                use_multiprocessing=False
+                                workers=25,
+                                use_multiprocessing=False # Dont set to true makes processing slow
                                )
     
 
@@ -89,8 +88,9 @@ import tensorflow as tf
 
 
 
-
+#import os 
 if len(args.gpus)==1:
+#    os.environ["CUDA_VISIBLE_DEVICES"]='1'#str(args.gpus[0])
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.gpu_options.visible_device_list = str(args.gpus[0])
@@ -99,7 +99,9 @@ if len(args.gpus)==1:
 
 if args.use_model is None:
     #tf.reset_default_graph()
-    with tf.device('/cpu:0'):
+#    with tf.device('/gpu:0'):
+#    with tf.device('/cpu:0'):
+    if True:
         # create the base pre-trained model
         base_model = InceptionV3(weights='imagenet', include_top=False)
 
@@ -111,20 +113,18 @@ if args.use_model is None:
 
         if args.use_bg_cls:
             pred = Dense(101,name='pred')(x)
-#            pred = Dense(101, activation='softmax',name='pred')(x)
         else:
             pred = Dense(100,name='pred')(x)
-#            pred = Dense(100, activation='softmax',name='pred')(x)
 
         softmax_output = Activation('softmax',name='softmax')(pred)
         model = Model(inputs=base_model.input, outputs=softmax_output)
-#        model = Model(inputs=base_model.input, outputs=pred)
 
 else:
+    
     model = keras.models.load_model(args.use_model)
     print "Loded Model",args.use_model
+    
     if args.use_bg_cls and model.output_shape[1]!=101:
-        
         # Adding additional node for the Background class to the fully connected layer
         weights = model.get_layer('pred').get_weights()
         # Adding the Bias Term
@@ -139,10 +139,8 @@ else:
         #output = Flatten()(output)
         pred = Dense(101,name='pred')(output)
         softmax_output = Activation('softmax',name='softmax')(pred)
-        model = Model(inputs=base_model.input, outputs=softmax_output)
-#        model = Model(inputs=model.input, outputs=pred)
+        model = Model(inputs=model.input, outputs=softmax_output)
         model.get_layer('pred').set_weights(weights)
-        print ".....................DONE........................123"
     
 for layer in model.layers[:249]:
     layer.trainable = False
@@ -151,7 +149,6 @@ for layer in model.layers[249:]:
 
 
 # compile the model (should be done *after* setting layers to non-trainable)
-
 
 def ring_loss(y_true,y_pred):
     pred=K.sqrt(K.sum(K.square(y_pred),axis=1))
@@ -169,82 +166,68 @@ def ring_loss(y_true,y_pred):
 
 adam = Adam(lr=0.01)
 if args.use_ring_loss:
-    #base_model = InceptionV3(weights='imagenet', include_top=False)
-    #print "base_model.shape",base_model.input
-    #unknownsMaximumMag = Input(shape=(1,), dtype='float32', name='unknownsMaximumMag')
-    #knownsMinimumMag = Input(shape=(1,), dtype='float32', name='knownsMinimumMag')
-    print "model.input",model.input
-    #image = Input(shape=(299, 299, 3), dtype='float32', name='image')
-    #model.inputs=[model.input,unknownsMaximumMag,knownsMinimumMag]
-#    pred = model.get_layer('pred').output
-#    fc = model.get_layer('fc').output
-    """
+    unknownsMaximumMag = Input(shape=(1,), dtype='float32', name='unknownsMaximumMag')
+    knownsMinimumMag = Input(shape=(1,), dtype='float32', name='knownsMinimumMag')
+    softmax_output = model.get_layer('softmax').output
+    fc = model.get_layer('fc').output
     model = Model(
                     inputs=[
-                            model.input,
-#                            unknownsMaximumMag,
-#                            knownsMinimumMag
+                                model.input,
+                                unknownsMaximumMag,
+                                knownsMinimumMag
                             ], 
                     outputs=[
-                            pred, 
-#                            fc
+                                softmax_output, 
+                                fc
                             ]
                  )
-    """
-    print "model.input",model.inputs
-    print data_generator_params
-    model.compile(
-                    optimizer=adam,
-                    loss={'pred': 'categorical_crossentropy'},#,'fc':ring_loss},
-#                    loss_weights={'pred': 1., 'fc': 0.00001},
-                    metrics=['accuracy']#,'accuracy']
-                )
-
-else:
-    model.compile(optimizer=adam, loss={'softmax':'categorical_crossentropy'},metrics=['acc'])
 
 
-"""
 if len(args.gpus)>1:
     parallel_model = multi_gpu_model(model, gpus=args.gpus)
 else:
     parallel_model = model
-"""
-# train the model on the new data for a few epochs
-#model.fit_generator(...)
-#keras.backend.get_session().run(tf.global_variables_initializer())
+
+    
+if args.use_ring_loss:
+    parallel_model.compile(
+                            optimizer=adam,
+                            loss={'softmax': 'categorical_crossentropy','fc':ring_loss},
+                            loss_weights={'softmax': args.cross_entropy_loss_weight, 'fc': args.ring_loss_weight},
+                            metrics=['acc']
+                        )
+
+else:
+    parallel_model.compile(optimizer=adam, loss={'softmax':'categorical_crossentropy'},metrics=['acc'])
+
 
 model_file=''
 if not args.include_known_unknowns:
-    model_file='Pretrained_model/'
+    model_file='Pretrained_model/Model_Epoch_number_{epoch:02d}.hdf5'
 elif args.use_bg_cls:
-    model_file='BG_Cls_Data/'
+    model_file='BG_Cls_Data/Model_Epoch_number_{epoch:02d}.hdf5'
 elif args.use_ring_loss:
-    model_file='Ring_Loss_Data/'
+    model_file='Ring_Loss_Data/Model_Epoch_number_'+str(args.cross_entropy_loss_weight)+'_'+str(args.ring_loss_weight)+'_{epoch:02d}.hdf5'
 else:
-    model_file='Cross_Entr_Data/'
+    model_file='Cross_Entr_Data/Model_Epoch_number_{epoch:02d}.hdf5'
 
 
-"""
 checkpointer = ModelCheckpoint(
-                                filepath=model_file+'Model_Epoch_number_{}.hdf5', 
+                                filepath=model_file, 
                                 verbose=1, 
                                 save_best_only=False , 
                                 period=1, 
                                 save_weights_only=False
                                 )
-"""
-print "Here"
-print "validation_generator",validation_generator#,next(validation_generator)
-print "training_generator",training_generator#,next(training_generator)
-model.fit_generator(
+
+parallel_model.fit_generator(
                             generator=training_generator,
                             validation_data=validation_generator,
                             max_queue_size=50,
-                            epochs=5,
-#                            callbacks=[checkpointer],
+                            epochs=50,
+                            callbacks=[checkpointer],
 #                            verbose=2,
                             **fit_generator_params
                             )
 
-#model.save(model_file)
+#parallel_model.save(model_file)
