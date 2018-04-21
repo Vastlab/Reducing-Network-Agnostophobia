@@ -25,7 +25,8 @@ class imagenet_data_prep(keras.utils.Sequence):
                  unknownsMaximumMag=None,
                  knownsMinimumMag=None,
                  debug = False,
-                 hard_negative_sample_ids=None
+                 hard_negative_sample_ids=None,
+                 no_of_known_unknown_classes = 450
                 ):
 
         self.db_type = db_type
@@ -65,6 +66,9 @@ class imagenet_data_prep(keras.utils.Sequence):
             self.knowns_class_mapping = dict(zip(self.known_classes,range(len(self.known_classes))))
             not_known_labels = list(set(raw_labels)-set(self.known_classes))
             self.known_unknown_classes = not_known_labels[:int(0.5*len(not_known_labels))]
+            
+            self.known_unknown_classes = self.known_unknown_classes[:no_of_known_unknown_classes]
+            
             self.unknown_classes = not_known_labels[int(0.5*len(not_known_labels)):]
             training_data_obj=self
 

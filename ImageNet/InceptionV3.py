@@ -18,6 +18,8 @@ parser.add_argument('--ring_loss_weight', help='ring_loss_weight', type=float, d
 parser.add_argument("--snapshot_location", action="store", dest="snapshot_location", default ='')
 parser.add_argument("--fine_tune", dest="fine_tune", action="store_true", default=False)
 
+parser.add_argument('--no_of_known_unknown_classes', action="store", dest="no_of_known_unknown_classes", help='no_of_known_unknown_classes', type=int)
+
 parser.add_argument("--solver", action="store", dest="solver", default = 'adam')
 parser.add_argument("--lr", action="store", dest="lr", default = 0.1, type=float)
 parser.add_argument("--decay", action="store", dest="decay", default = 0.9, type=float)
@@ -66,6 +68,7 @@ data_generator_params = dict(
                                 batch_size=Batch_Size,
                                 use_bg_cls=args.use_bg_cls,
                                 split_no=args.split_no,
+                                no_of_known_unknown_classes=args.no_of_known_unknown_classes,
                                 debug=False #True
                             )
 
