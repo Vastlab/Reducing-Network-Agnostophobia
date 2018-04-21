@@ -15,7 +15,7 @@ class imagenet_data_prep(keras.utils.Sequence):
                  split_no=0,
                  batch_size=64,
                  shuffle = False,
-                 dataset_path = '/scratch/adhamija/ImageNet_299_299/{}/',
+                 dataset_path = '/net/ironman/scratch/adhamija/ImageNet_299_299/{}/',
 #                 dataset_path = '/net/kato/datasets/ImageNet/ILSVRC_2012/{}/',
                  protocol_file_path = '/net/ironman/scratch/adhamija/caffe/data/ilsvrc12/{}.txt',
                  use_bg_cls = False,
@@ -23,20 +23,33 @@ class imagenet_data_prep(keras.utils.Sequence):
                  include_unknowns = False,
                  training_data_obj=None,
                  unknownsMaximumMag=None,
-                 knownsMinimumMag=None
+                 knownsMinimumMag=None,
+                 debug = False,
+                 hard_negative_sample_ids=None
                 ):
 
+        self.db_type = db_type
         self.batch_size = batch_size
-        self.dataset_path = dataset_path.format(db_type)
         self.use_bg_cls = use_bg_cls
         self.shuffle = shuffle
         self.unknownsMaximumMag = unknownsMaximumMag
         self.knownsMinimumMag = knownsMinimumMag
-        # Reading and grouping file
-        csv_content = pd.read_csv(
-                                    protocol_file_path.format(db_type),
-                                    delimiter=' ',header=None, lineterminator='\n'
-                                    )
+        
+        if db_type=='val' or db_type=='train':
+            # Reading and grouping file
+            csv_content = pd.read_csv(
+                                        protocol_file_path.format('train'),
+                                        delimiter=' ',header=None, lineterminator='\n'
+                                        )
+            self.dataset_path = dataset_path.format('train')
+        else:
+            # Reading and grouping file
+            csv_content = pd.read_csv(
+                                        protocol_file_path.format('val'),
+                                        delimiter=' ',header=None, lineterminator='\n'
+                                        )
+            self.dataset_path = dataset_path.format('val')
+            
         data_frame_group = csv_content.groupby([1])
         self.data_frame_group=data_frame_group
 
@@ -44,7 +57,8 @@ class imagenet_data_prep(keras.utils.Sequence):
         labels=[]
         sample_weights=[]
 
-        if db_type=='train' or (db_type=='val' and training_data_obj is None):
+        # Find all Classes to be identified as Knowns, Known Unknowns and Unknowns
+        if db_type=='train' or ((db_type=='val' or db_type=='test') and training_data_obj is None):
             raw_labels=data_frame_group.groups.keys()
             random.shuffle(raw_labels)
             self.known_classes = raw_labels[split_no:split_no+(len(raw_labels)/10)]
@@ -53,16 +67,22 @@ class imagenet_data_prep(keras.utils.Sequence):
             self.known_unknown_classes = not_known_labels[:int(0.5*len(not_known_labels))]
             self.unknown_classes = not_known_labels[int(0.5*len(not_known_labels)):]
             training_data_obj=self
-            #self.known_unknown_classes = self.known_unknown_classes[:1]
-            #self.known_classes = self.known_classes[:3]
-            #self.unknown_classes = self.unknown_classes[:3]
 
         self.n_classes = len(training_data_obj.known_classes)
-        # Adding Known Unknowns
+
+        if debug:
+            training_data_obj.known_unknown_classes = training_data_obj.known_unknown_classes[:3]
+            training_data_obj.known_classes = training_data_obj.known_classes[:3]
+            training_data_obj.unknown_classes = training_data_obj.unknown_classes[:3]
+            self.n_classes = 100
+
+            
+        # Adding Known Unknown Samples
         if include_known_unknowns:
             no_of_known_unknowns=0
             for key in training_data_obj.known_unknown_classes:
                 id_list = data_frame_group.get_group(key)[0].values.tolist()
+                id_list = self.select_ids(id_list)
                 ids.extend(id_list)
                 no_of_known_unknowns+=len(id_list)
             labels.extend((np.ones(no_of_known_unknowns)*-1).tolist())
@@ -73,6 +93,7 @@ class imagenet_data_prep(keras.utils.Sequence):
             no_of_unknowns=0
             for key in training_data_obj.unknown_classes:
                 id_list = data_frame_group.get_group(key)[0].values.tolist()
+                id_list = self.select_ids(id_list)
                 ids.extend(id_list)
                 no_of_unknowns+=len(id_list)
             labels.extend((np.ones(no_of_unknowns)*-1).tolist())
@@ -81,6 +102,7 @@ class imagenet_data_prep(keras.utils.Sequence):
         # Adding Known Samples
         for key in training_data_obj.known_classes:
             id_list = data_frame_group.get_group(key)[0].values.tolist()
+            id_list = self.select_ids(id_list)
             ids.extend(id_list)
             labels.extend((np.ones(len(id_list))*training_data_obj.knowns_class_mapping[key]).tolist())
             sample_weights.extend((np.ones(len(id_list))*(100./len(id_list))).tolist())
@@ -92,6 +114,15 @@ class imagenet_data_prep(keras.utils.Sequence):
         self.on_epoch_end()
 
 
+
+    def select_ids(self,id_list):
+        if self.db_type=='train':
+            return id_list[:-50]
+        elif self.db_type=='val':
+            return id_list[-50:]
+        else:
+            return id_list            
+        
         
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -140,7 +171,7 @@ class imagenet_data_prep(keras.utils.Sequence):
 #            print "self.dataset_path+ID",self.dataset_path+ID
             img = cv2.imread(self.dataset_path+ID)
             if img is None:
-                print "IMG",img
+                print "IMG",img,self.dataset_path+ID
             #img = cv2.resize(img,(299,299),interpolation=cv2.INTER_CUBIC)
             X.append(img)
             
@@ -184,27 +215,7 @@ class imagenet_data_prep(keras.utils.Sequence):
                         ])
             else:
                 return X, Y, sample_weights
-    
-        """
-        return X, Y, sample_weights
-        return (
-                    {
-                        "input_1:0":X,
-                        "unknownsMaximumMag":np.ones((sample_weights.shape[0]))*unknownsMaximumMag,
-                        "knownsMinimumMag":np.ones((sample_weights.shape[0]))*knownsMinimumMag
-                    },
-                    {
-                        "pred":Y,
-                        "fc":np.zeros((sample_weights.shape[0],1024))
-                    },
-                    {
-                        "sample_weights":sample_weights
-                    },
-                )
-        """
-    
-    
-    
+        
     
 train_prefetched_images = None
 val_prefetched_images = None
