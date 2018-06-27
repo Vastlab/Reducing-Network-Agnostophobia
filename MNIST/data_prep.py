@@ -4,6 +4,7 @@ import csv
 import gzip
 import struct
 import cv2
+import os
 import glob
 from sklearn.model_selection import train_test_split
 from keras.utils.np_utils import to_categorical
@@ -80,7 +81,7 @@ class letters_prep:
         images=images.reshape((images.shape[0],28,28,1))
         images=np.rot90(images, k=3, axes=(1,2))
         images=np.flip(images,axis=2)
-
+        
         self.X_train, self.X_val, self.Y_train, self.Y_val = train_test_split(images, labels,train_size=0.8,test_size=0.2)
         all_classes=list(set(labels.tolist()))
         known_unknown_classes = all_classes[:int(0.5*len(all_classes))]
@@ -97,7 +98,7 @@ class letters_prep:
         images=images*(1./255.)
         images=images.reshape((images.shape[0],28,28,1))
         images=np.rot90(images, k=3, axes=(1,2))
-        images=np.flip(l,axis=2)
+        images=np.flip(images,axis=2)
 
         self.X_test=images
         self.Y_test=labels
@@ -132,6 +133,32 @@ class hindi_letters:
             images.extend(raw_data)
         self.images = np.array(images)[...,np.newaxis]
         self.images = self.images*(1./255.)
+        p.close()
+        p.join()
+        del p
+        
+        
+
+def read_NOT_MNIST(file_name):
+    img = cv2.imread(file_name,0)
+    return img
+
+
+class NOT_MNIST:    
+    def __init__(self,invert_image=True):
+        root_path = '/net/kato/datasets/notMNIST_small/'
+        files_to_process = glob.glob(root_path+'*/*.png')
+        p=ThreadPool(multiprocessing.cpu_count())
+        images=p.map(read_NOT_MNIST,files_to_process)
+        
+#        images=[]
+#        for f in files_to_process:
+#            images.append(read_NOT_MNIST(f))
+
+        self.images = np.array(images)[...,np.newaxis]
+        self.images = self.images*(1./255.)
+        if invert_image:
+            self.images=1-self.images
         p.close()
         p.join()
         del p
