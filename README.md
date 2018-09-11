@@ -24,6 +24,10 @@ The preprocessing is largely limited to normalization of pixel values except for
 ## Reproducing Results
 All the visualizations for the MNIST experiments provided in the paper can be reproduced following the Jupyter Notebook at [MNIST/Fig_creator.ipynb](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/Fig_creator.ipynb).
 It utilizes the tools available in [Tools](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools).
-The [Tools/model_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/model_tools.py) contain functions such as to extract feature vectors from a specific layer of the network.
-The [Tools/visualizing_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/visualizing_tools.py) contain the plotting functions for the two dimensional plots.
-And, the [Tools/evaluation_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/evaluation_tools.py) contain the plotting functions for the DIR curves in the paper.
+The [Tools/model_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/model_tools.py) contains functions to define the network architecture, extract feature vectors from a specific layer of the network and preprocess data for implementing in the loss function.
+The [Tools/visualizing_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/visualizing_tools.py) contains the plotting functions for the two dimensional plots and the histograms.
+And, the [Tools/evaluation_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/evaluation_tools.py) contains the plotting functions for the DIR curves in the paper as well as a function to write the results into a preliminary file.
+Please refer to these files for a detailed understanding.
+
+# TODOs
+Cleanup files under Tools
