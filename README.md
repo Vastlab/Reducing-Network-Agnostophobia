@@ -1,4 +1,4 @@
-# ObjectoSphere
+# Reducing Network Agnostophobia
 
 This Repository provides the code to reproduce all the results for the MNIST experiments in the paper "Reducing Network Agnostophobia".
 
