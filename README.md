@@ -1,2 +1,29 @@
 # ObjectoSphere
 
+This Repository provides the code to reproduce all the results for the MNIST experiments in the paper "Reducing Network Agnostophobia".
+
+## Training
+[MNIST/Mnist_Training.py](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/Mnist_Training.py) provides the script to train models with all the loss functions used in different experiments. 
+The random models used to initalize the networks trained in the paper are also provided at [MNIST/LeNet++/Random_Models](https://github.com/Vastlab/ObjectoSphere/tree/master/MNIST/LeNet%2B%2B/Random_Models).
+The type of networks supported by this script contain:
+
+1. Original LeNet/LeNet++ with Softmax loss.
+2. LeNet/LeNet++ with Background Class.
+3. LeNet/LeNet++ with Entropic OpenSet Loss.
+4. LeNet/LeNet++ with ObjectoSphere Loss.
+
+For details please refer to the help provided in [MNIST/Mnist_Training.py](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/Mnist_Training.py)
+
+The training and testing process for the OpenMax technique is provided in [MNIST/openmax.py](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/openmax.py)
+
+
+## Datasets Preprocessing
+All datasets and their preprocessing is provided in [MNIST/data_prep.py](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/data_prep.py).
+The preprocessing is largely limited to normalization of pixel values except for MNIST where we negate the pixel values before normalization, in order to achieve a consistent black on white background images for all datasets.
+
+## Reproducing Results
+All the visualizations for the MNIST experiments provided in the paper can be reproduced following the Jupyter Notebook at [MNIST/Fig_creator.ipynb](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/Fig_creator.ipynb).
+It utilizes the tools available in [Tools](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools).
+The [Tools/model_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/model_tools.py) contain functions such as to extract feature vectors from a specific layer of the network.
+The [Tools/visualizing_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/visualizing_tools.py) contain the plotting functions for the two dimensional plots.
+And, the [Tools/evaluation_tools.py](https://github.com/Vastlab/ObjectoSphere/tree/master/Tools/evaluation_tools.py) contain the plotting functions for the DIR curves in the paper.
