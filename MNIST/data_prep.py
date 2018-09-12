@@ -149,12 +149,7 @@ class NOT_MNIST:
         root_path = '/net/kato/datasets/notMNIST_small/'
         files_to_process = glob.glob(root_path+'*/*.png')
         p=ThreadPool(multiprocessing.cpu_count())
-        images=p.map(read_NOT_MNIST,files_to_process)
-        
-#        images=[]
-#        for f in files_to_process:
-#            images.append(read_NOT_MNIST(f))
-
+        images=p.map(read_NOT_MNIST,files_to_process)        
         self.images = np.array(images)[...,np.newaxis]
         self.images = self.images*(1./255.)
         if invert_image:

@@ -6,7 +6,13 @@ import numpy as np
 
 
 def LeNet_plus_plus(perform_L2_norm=False,activation_type='softmax',ring_approach=False,background_class=False, knownsMinimumMag = None):
-    
+    """
+    Defines the network architecture for LeNet++.
+    Use the options for different approaches:
+    background_class: Classification with additional class for negative classes
+    ring_approach: ObjectoSphere Loss applied if True
+    knownsMinimumMag: Minimum Magnitude allowed for samples belonging to one of the Known Classes if ring_approach is True
+    """
     mnist_image = Input(shape=(28, 28, 1), dtype='float32', name='mnist_image')
 
     # 28 X 28 --> 14 X 14
@@ -42,11 +48,6 @@ def LeNet_plus_plus(perform_L2_norm=False,activation_type='softmax',ring_approac
         softmax = Activation(activation_type,name='softmax')(pred)
         model = Model(inputs=[mnist_image], outputs=[softmax])
     else:
-        """
-        pred = Dense(10, name='pred',use_bias=False)(fc)
-        softmax = Activation(activation_type,name='softmax')(pred)
-        model = Model(inputs=[mnist_image], outputs=[softmax])
-        """
         pred = Dense(10, name='pred', use_bias=False)(fc)
         softmax = Activation(activation_type,name='softmax')(pred)
         model = Model(inputs=[mnist_image], outputs=[softmax])
@@ -55,9 +56,14 @@ def LeNet_plus_plus(perform_L2_norm=False,activation_type='softmax',ring_approac
 
 
 
-
-
 def LeNet(activation_type='softmax',ring_approach=False,background_class=False, knownsMinimumMag = None):
+    """
+    Defines the network architecture for LeNet.
+    Use the options for different approaches:
+    background_class: Classification with additional class for negative classes
+    ring_approach: ObjectoSphere Loss applied if True
+    knownsMinimumMag: Minimum Magnitude allowed for samples belonging to one of the Known Classes if ring_approach is True
+    """
     
     mnist_image = Input(shape=(28, 28, 1), dtype='float32', name='mnist_image')
     
@@ -71,29 +77,31 @@ def LeNet(activation_type='softmax',ring_approach=False,background_class=False, 
 
     flatten=Flatten(name='flatten')(pool2)
     fc = Dense(500,name='fc',use_bias=True)(flatten)
-#    act3 = Activation("relu",name="act3")(fc)
-    act3 = fc
     
     if knownsMinimumMag is not None:
         knownUnknownsFlag = Input((1,), dtype='float32', name='knownUnknownsFlag')
-        pred = Dense(10, name='pred',use_bias=False)(act3)
+        pred = Dense(10, name='pred',use_bias=False)(fc)
         softmax = Activation(activation_type,name='softmax')(pred)
         model = Model(inputs=[mnist_image,knownsMinimumMag], outputs=[softmax,fc])
     elif background_class:
-        pred = Dense(11, name='pred',use_bias=False)(act3)
+        pred = Dense(11, name='pred',use_bias=False)(fc)
         softmax = Activation(activation_type,name='softmax')(pred)
         model = Model(inputs=[mnist_image], outputs=[softmax])
     else:
-        pred = Dense(10, name='pred', use_bias=False)(act3)
+        pred = Dense(10, name='pred', use_bias=False)(fc)
         softmax = Activation(activation_type,name='softmax')(pred)
         model = Model(inputs=[mnist_image], outputs=[softmax])
     return model
 
 
-
-
-
 def extract_features(model,data,layer_name = ['fc','softmax']):
+    """
+    Use this function to extract deep feature from the layers of interest.
+    Input:
+        model: Keras model object
+        data: The data in Numpy array for which deep features need to be extracted.
+        layer_name: A list containing all the layer names that need to be extracted.
+    """
     out=[]
     for l in layer_name:
         out.append(model.get_layer(l).output)

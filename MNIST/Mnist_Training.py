@@ -7,7 +7,7 @@ import argparse
 
 parser = argparse.ArgumentParser(
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                    description='This is the main training file for all MNIST experiments. \
+                                    description='This is the main training script for all MNIST experiments. \
                                                 Where applicable roman letters are used as Known Unknowns. \
                                                 During training model with best performance on validation set in the no_of_epochs is used.'
                                 )
@@ -55,11 +55,11 @@ set_session(tf.Session(config=config))
 
 import keras
 from keras.optimizers import SGD, Adam
-from keras.callbacks import ModelCheckpoint,LearningRateScheduler,EarlyStopping
+from keras.callbacks import ModelCheckpoint,LearningRateScheduler
 from keras.layers import Input
 from keras import backend as K
 import numpy as np
-
+import os
 
 
 """
@@ -86,10 +86,10 @@ if args.use_lenet:
 else:
     results_dir='LeNet++/Models/'
     weights_file='LeNet++'
-    
-weights_file=weights_file+'/Random_Models/model_'+str(args.random_model)+'.h5py'
 
-#earlystop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=10, verbose=1, mode='min')
+if not os.path.exists(results_dir):
+    os.makedirs(results_dir)
+weights_file=weights_file+'/Random_Models/model_'+str(args.random_model)+'.h5py'
 
 if args.solver == 'adam':
     adam = Adam(lr=args.lr)
@@ -101,7 +101,6 @@ if args.Vanilla:
                                     results_dir+'Vanilla_'+str(args.random_model)+'.h5py', monitor='val_loss', verbose=0, save_best_only=True,
                                     save_weights_only=False, mode='min', period=1
                                 )
-#    callbacks_list = [earlystop,model_saver]
     callbacks_list = [model_saver]
     
     if args.use_lenet:
@@ -119,7 +118,6 @@ if args.Vanilla:
     
 elif args.BG:
     model_saver = ModelCheckpoint(results_dir+'BG_'+str(args.random_model)+'.h5py', monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=False, mode='min', period=1)
-#    callbacks_list = [earlystop,model_saver]
     callbacks_list = [model_saver]
 
     X_train=np.concatenate((mnist.X_train,letters.X_train))
@@ -159,7 +157,6 @@ elif args.BG:
 elif args.cross:
     X_train,Y_train,sample_weights=model_tools.concatenate_training_data(mnist,letters.X_train,0.1)
     model_saver = ModelCheckpoint(results_dir+'Cross_'+str(args.random_model)+'.h5py', monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=False, mode='min', period=1)
-#    callbacks_list = [earlystop,model_saver]
     callbacks_list = [model_saver]
     
     if args.use_lenet:
@@ -192,7 +189,6 @@ elif args.use_ring_loss:
                                     results_dir+'Ring_'+str(args.Minimum_Knowns_Magnitude)+'_'+str(args.random_model)+'.h5py',
                                     monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=False, mode='min', period=1
                                 )
-#    callbacks_list = [earlystop,model_saver]
     callbacks_list = [model_saver]
 
     flag_placeholder=np.zeros((mnist.Y_val.shape[0],2))
