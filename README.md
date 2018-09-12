@@ -16,10 +16,10 @@ The types of networks supported by this script contain:
 3. LeNet/LeNet++ with Entropic OpenSet Loss.
 4. LeNet/LeNet++ with ObjectoSphere Loss.
 
+In the current training process we run the training for the given network for 70 epochs and save only the model with the best validation loss.
 For details please refer to the help provided in [MNIST/Mnist_Training.py](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/Mnist_Training.py)
 
 The training and testing process for the OpenMax technique is provided in [MNIST/openmax.py](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/openmax.py)
-
 
 ## Reproducing Results
 All the visualizations for the MNIST experiments provided in the paper can be reproduced following the Jupyter Notebook at [MNIST/Fig_creator.ipynb](https://github.com/Vastlab/ObjectoSphere/blob/master/MNIST/Fig_creator.ipynb).
